@@ -35,7 +35,7 @@ foreach ($expenses as $exp) {
 
     <!-- The Interactive Map -->
     <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
-        <div id="roadtrip-map" class="w-full h-[300px] sm:h-[400px] z-0"></div>
+        <div id="roadtrip-map" hx-preserve="true" class="w-full h-[300px] sm:h-[400px] z-0"></div>
     </div>
 
     <!-- The Waypoint Timeline -->

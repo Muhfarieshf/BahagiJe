@@ -170,7 +170,7 @@ if ($session->status === 'closed' && !empty($settlements)) {
         </div>
 
         <!-- Main Content Container -->
-        <div class="lg:col-span-2 space-y-5">
+        <div id="realtime-session-data" class="lg:col-span-2 space-y-5" hx-get="<?= $this->Url->build(['action' => 'view', $session->uuid]) ?>" hx-trigger="every <?= $session->status === 'closed' ? '15s' : '5s' ?>" hx-select="#realtime-session-data" hx-swap="outerHTML">
             <?php if ($session->status === 'closed'): ?>
                 <?= $this->element('closed_session_dashboard') ?>
             <?php endif; ?>

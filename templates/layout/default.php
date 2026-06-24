@@ -16,6 +16,8 @@ $isLoggedIn = $identity !== null;
 
     <!-- Tailwind CSS (CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- HTMX -->
+    <script src="https://unpkg.com/htmx.org@1.9.11"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
