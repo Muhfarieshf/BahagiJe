@@ -106,7 +106,7 @@ if ($session->status === 'closed' && !empty($settlements)) {
 
             <?php if ($session->status === 'open'): ?>
                 <!-- Adding bg-white padding so QR stays scanable in dark mode -->
-                <div id="session-qr-code" hx-preserve="true" class="bg-white p-2 rounded-lg">
+                <div id="session-qr-code" class="bg-white p-2 rounded-lg">
                     <?= $this->QrCode->generate($session->uuid, 220) ?>
                 </div>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Scan to join this session</p>
