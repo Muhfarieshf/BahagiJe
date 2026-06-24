@@ -23,7 +23,7 @@ $presetLabels = [
 ];
 ?>
 
-<div class="max-w-4xl mx-auto mt-8 px-4 space-y-6">
+<div id="realtime-session-data" class="max-w-4xl mx-auto mt-8 px-4 space-y-6" hx-get="<?= $this->Url->build(['action' => 'view', $session->uuid]) ?>" hx-trigger="every <?= $session->status === 'closed' ? '15s' : '5s' ?>" hx-select="#realtime-session-data" hx-swap="outerHTML">
 
     <?php if ($identity): ?>
     <div>
@@ -106,7 +106,7 @@ if ($session->status === 'closed' && !empty($settlements)) {
 
             <?php if ($session->status === 'open'): ?>
                 <!-- Adding bg-white padding so QR stays scanable in dark mode -->
-                <div class="bg-white p-2 rounded-lg">
+                <div id="session-qr-code" hx-preserve="true" class="bg-white p-2 rounded-lg">
                     <?= $this->QrCode->generate($session->uuid, 220) ?>
                 </div>
                 <p class="text-xs text-slate-500 dark:text-slate-400">Scan to join this session</p>
@@ -170,7 +170,7 @@ if ($session->status === 'closed' && !empty($settlements)) {
         </div>
 
         <!-- Main Content Container -->
-        <div id="realtime-session-data" class="lg:col-span-2 space-y-5" hx-get="<?= $this->Url->build(['action' => 'view', $session->uuid]) ?>" hx-trigger="every <?= $session->status === 'closed' ? '15s' : '5s' ?>" hx-select="#realtime-session-data" hx-swap="outerHTML">
+        <div class="lg:col-span-2 space-y-5">
             <?php if ($session->status === 'closed'): ?>
                 <?= $this->element('closed_session_dashboard') ?>
             <?php endif; ?>
@@ -485,6 +485,73 @@ if ($session->status === 'closed' && !empty($settlements)) {
 
         </div>
     </div>
+    <script>
+        (function() {
+            if (typeof window.sessionTracker === 'undefined') {
+                window.sessionTracker = {
+                    status: '<?= $session->status ?>',
+                    expenseCount: <?= count($expenses ?? []) ?>,
+                    participantCount: <?= count($session->participants ?? []) ?>,
+                    pendingProofs: <?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'pending')) ?>,
+                    approvedProofs: <?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'approved')) ?>,
+                    rejectedProofs: <?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'rejected')) ?>
+                };
+                return;
+            }
+
+            let oldState = window.sessionTracker;
+            let newState = {
+                status: '<?= $session->status ?>',
+                expenseCount: <?= count($expenses ?? []) ?>,
+                participantCount: <?= count($session->participants ?? []) ?>,
+                pendingProofs: <?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'pending')) ?>,
+                approvedProofs: <?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'approved')) ?>,
+                rejectedProofs: <?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'rejected')) ?>
+            };
+
+            // Status Changes
+            if (oldState.status === 'open' && newState.status === 'locked') {
+                if (typeof Swal !== 'undefined') {
+                    Swal.fire({
+                        title: 'Session Locked',
+                        text: 'The Host has locked this session to finalize calculations. You can no longer add expenses.',
+                        icon: 'warning',
+                        confirmButtonText: 'Understood'
+                    });
+                } else {
+                    alert('Session Locked: The Host has locked this session to finalize calculations. You can no longer add expenses.');
+                }
+            } else if (oldState.status === 'locked' && newState.status === 'closed') {
+                if (typeof showToast === 'function') showToast('Session has been closed. You can now view your settlements!', 'info');
+            } else if (oldState.status !== 'open' && newState.status === 'open') {
+                if (typeof showToast === 'function') showToast('The session was unlocked. You can add expenses again.', 'info');
+            }
+
+            // Items and Participants
+            if (newState.expenseCount > oldState.expenseCount) {
+                if (typeof showToast === 'function') showToast('A new expense or stop was added!', 'success');
+            } else if (newState.expenseCount < oldState.expenseCount) {
+                if (typeof showToast === 'function') showToast('An item was removed from the session.', 'info');
+            }
+
+            if (newState.participantCount > oldState.participantCount) {
+                if (typeof showToast === 'function') showToast('A new participant joined the session!', 'success');
+            }
+
+            // Payment Proofs
+            if (newState.pendingProofs > oldState.pendingProofs) {
+                if (typeof showToast === 'function') showToast('A new payment receipt was uploaded!', 'info');
+            }
+            if (newState.approvedProofs > oldState.approvedProofs) {
+                if (typeof showToast === 'function') showToast('A payment receipt was approved!', 'success');
+            }
+            if (newState.rejectedProofs > oldState.rejectedProofs) {
+                if (typeof showToast === 'function') showToast('A payment receipt was rejected.', 'error');
+            }
+
+            window.sessionTracker = newState;
+        })();
+    </script>
 </div>
 
 <script>
