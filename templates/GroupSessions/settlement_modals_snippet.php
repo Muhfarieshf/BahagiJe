@@ -9,8 +9,8 @@
     $myCredits = array_filter($settlementsArray, fn($s) => $s->creditor_id === $participantId);
 ?>
 <?php $isModalHidden = isset($_COOKIE['settlement_shown_' . $session->id]) ? 'hidden' : ''; ?>
-<div id="participantSettlementModal" class="fixed inset-0 z-[70] <?= $isModalHidden ?> bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative transform transition-all">
+<div id="participantSettlementModal" class="fixed inset-0 z-[70] <?= $isModalHidden ?> bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="closeParticipantModal()">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md overflow-hidden relative transform transition-all" onclick="event.stopPropagation()">
         <!-- Confetti / Header -->
         <div class="bg-gradient-to-br from-blue-600 to-indigo-700 p-6 text-center text-white relative">
             <button type="button" onclick="closeParticipantModal()" class="absolute top-4 right-4 text-white/70 hover:text-white text-2xl leading-none">&times;</button>
@@ -103,6 +103,9 @@
     </div>
 </div>
 <script>
+    function closeParticipantModal() {
+        document.getElementById('participantSettlementModal').style.display = 'none';
+    }
     // Set cookie immediately so modal doesn't reappear on page reload
     try {
         document.cookie = "settlement_shown_<?= $session->id ?>=1; path=/; max-age=31536000";
