@@ -23,7 +23,7 @@ $presetLabels = [
 ];
 ?>
 
-<div id="realtime-session-data" class="max-w-4xl mx-auto mt-8 px-4 space-y-6" hx-get="<?= $this->Url->build(['action' => 'view', $session->uuid]) ?>" hx-trigger="every <?= $session->status === 'closed' ? '15s' : '5s' ?>" hx-select="#realtime-session-data" hx-swap="outerHTML">
+<div id="realtime-session-data" class="max-w-4xl mx-auto mt-8 px-4 space-y-6" hx-get="<?= $this->Url->build(['action' => 'view', $session->uuid]) ?>" hx-trigger="every <?= $session->status === 'closed' ? '15s' : '5s' ?>" hx-select="#realtime-session-data" hx-swap="outerHTML" data-status="<?= h($session->status) ?>" data-expense-count="<?= count($expenses ?? []) ?>" data-participant-count="<?= count($session->participants ?? []) ?>" data-pending-proofs="<?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'pending')) ?>" data-approved-proofs="<?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'approved')) ?>" data-rejected-proofs="<?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'rejected')) ?>">
 
     <?php if ($identity): ?>
     <div>
@@ -485,73 +485,101 @@ if ($session->status === 'closed' && !empty($settlements)) {
 
         </div>
     </div>
-    <script>
-        (function() {
-            if (typeof window.sessionTracker === 'undefined') {
-                window.sessionTracker = {
-                    status: '<?= $session->status ?>',
-                    expenseCount: <?= count($expenses ?? []) ?>,
-                    participantCount: <?= count($session->participants ?? []) ?>,
-                    pendingProofs: <?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'pending')) ?>,
-                    approvedProofs: <?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'approved')) ?>,
-                    rejectedProofs: <?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'rejected')) ?>
-                };
-                return;
-            }
 
-            let oldState = window.sessionTracker;
-            let newState = {
-                status: '<?= $session->status ?>',
-                expenseCount: <?= count($expenses ?? []) ?>,
-                participantCount: <?= count($session->participants ?? []) ?>,
-                pendingProofs: <?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'pending')) ?>,
-                approvedProofs: <?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'approved')) ?>,
-                rejectedProofs: <?= count(array_filter($paymentProofs ?? [], fn($p) => $p->status === 'rejected')) ?>
-            };
+<script>
+document.body.addEventListener('htmx:afterSettle', function(evt) {
+    if (evt.detail.target.id !== 'realtime-session-data') return;
+    
+    let container = evt.detail.target;
+    
+    let newStatus = container.getAttribute('data-status');
+    let newExpenseCount = parseInt(container.getAttribute('data-expense-count'));
+    let newParticipantCount = parseInt(container.getAttribute('data-participant-count'));
+    let newPendingProofs = parseInt(container.getAttribute('data-pending-proofs'));
+    let newApprovedProofs = parseInt(container.getAttribute('data-approved-proofs'));
+    let newRejectedProofs = parseInt(container.getAttribute('data-rejected-proofs'));
+    
+    if (typeof window.sessionTracker === 'undefined') {
+        window.sessionTracker = {
+            status: newStatus,
+            expenseCount: newExpenseCount,
+            participantCount: newParticipantCount,
+            pendingProofs: newPendingProofs,
+            approvedProofs: newApprovedProofs,
+            rejectedProofs: newRejectedProofs
+        };
+        return; 
+    }
+    
+    let oldState = window.sessionTracker;
+    let newState = {
+        status: newStatus,
+        expenseCount: newExpenseCount,
+        participantCount: newParticipantCount,
+        pendingProofs: newPendingProofs,
+        approvedProofs: newApprovedProofs,
+        rejectedProofs: newRejectedProofs
+    };
+    
+    // Status Changes
+    if (oldState.status === 'open' && newState.status === 'locked') {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: 'Session Locked',
+                text: 'The Host has locked this session to finalize calculations. You can no longer add expenses.',
+                icon: 'warning',
+                confirmButtonText: 'Understood'
+            });
+        } else {
+            alert('Session Locked: The Host has locked this session to finalize calculations. You can no longer add expenses.');
+        }
+    } else if (oldState.status === 'locked' && newState.status === 'closed') {
+        if (typeof showToast === 'function') showToast('Session has been closed. You can now view your settlements!', 'info');
+    } else if (oldState.status !== 'open' && newState.status === 'open') {
+        if (typeof showToast === 'function') showToast('The session was unlocked. You can add expenses again.', 'info');
+    }
 
-            // Status Changes
-            if (oldState.status === 'open' && newState.status === 'locked') {
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        title: 'Session Locked',
-                        text: 'The Host has locked this session to finalize calculations. You can no longer add expenses.',
-                        icon: 'warning',
-                        confirmButtonText: 'Understood'
-                    });
-                } else {
-                    alert('Session Locked: The Host has locked this session to finalize calculations. You can no longer add expenses.');
-                }
-            } else if (oldState.status === 'locked' && newState.status === 'closed') {
-                if (typeof showToast === 'function') showToast('Session has been closed. You can now view your settlements!', 'info');
-            } else if (oldState.status !== 'open' && newState.status === 'open') {
-                if (typeof showToast === 'function') showToast('The session was unlocked. You can add expenses again.', 'info');
-            }
+    // Items and Participants
+    if (newState.expenseCount > oldState.expenseCount) {
+        if (typeof showToast === 'function') showToast('A new expense or stop was added!', 'success');
+    } else if (newState.expenseCount < oldState.expenseCount) {
+        if (typeof showToast === 'function') showToast('An item was removed from the session.', 'info');
+    }
 
-            // Items and Participants
-            if (newState.expenseCount > oldState.expenseCount) {
-                if (typeof showToast === 'function') showToast('A new expense or stop was added!', 'success');
-            } else if (newState.expenseCount < oldState.expenseCount) {
-                if (typeof showToast === 'function') showToast('An item was removed from the session.', 'info');
-            }
+    if (newState.participantCount > oldState.participantCount) {
+        if (typeof showToast === 'function') showToast('A new participant joined the session!', 'success');
+    }
 
-            if (newState.participantCount > oldState.participantCount) {
-                if (typeof showToast === 'function') showToast('A new participant joined the session!', 'success');
-            }
+    // Payment Proofs
+    if (newState.pendingProofs > oldState.pendingProofs) {
+        if (typeof showToast === 'function') showToast('A new payment receipt was uploaded!', 'info');
+    }
+    if (newState.approvedProofs > oldState.approvedProofs) {
+        if (typeof showToast === 'function') showToast('A payment receipt was approved!', 'success');
+    }
+    if (newState.rejectedProofs > oldState.rejectedProofs) {
+        if (typeof showToast === 'function') showToast('A payment receipt was rejected.', 'error');
+    }
 
-            // Payment Proofs
-            if (newState.pendingProofs > oldState.pendingProofs) {
-                if (typeof showToast === 'function') showToast('A new payment receipt was uploaded!', 'info');
-            }
-            if (newState.approvedProofs > oldState.approvedProofs) {
-                if (typeof showToast === 'function') showToast('A payment receipt was approved!', 'success');
-            }
-            if (newState.rejectedProofs > oldState.rejectedProofs) {
-                if (typeof showToast === 'function') showToast('A payment receipt was rejected.', 'error');
-            }
+    window.sessionTracker = newState;
+});
 
-            window.sessionTracker = newState;
-        })();
-    </script>
+// Initialize on first load
+document.addEventListener('DOMContentLoaded', function() {
+    let container = document.getElementById('realtime-session-data');
+    if (container) {
+        window.sessionTracker = {
+            status: container.getAttribute('data-status'),
+            expenseCount: parseInt(container.getAttribute('data-expense-count')),
+            participantCount: parseInt(container.getAttribute('data-participant-count')),
+            pendingProofs: parseInt(container.getAttribute('data-pending-proofs')),
+            approvedProofs: parseInt(container.getAttribute('data-approved-proofs')),
+            rejectedProofs: parseInt(container.getAttribute('data-rejected-proofs'))
+        };
+    }
+});
+</script>
+
 </div>
 
 <script>
