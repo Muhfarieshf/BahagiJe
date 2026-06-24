@@ -130,8 +130,8 @@
 <!-- Payment Proof Upload Modals (One for each debt) -->
 <?php if (!empty($myDebts)): ?>
     <?php foreach ($myDebts as $debt): ?>
-    <div id="uploadProofModal_<?= $debt->id ?>" class="fixed inset-0 z-[80] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden relative transition-colors">
+    <div id="uploadProofModal_<?= $debt->id ?>" class="fixed inset-0 z-[80] hidden bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4" onclick="document.getElementById('uploadProofModal_<?= $debt->id ?>').classList.add('hidden')">
+        <div class="bg-white dark:bg-slate-800 rounded-2xl shadow-xl w-full max-w-sm overflow-hidden relative transition-colors" onclick="event.stopPropagation()">
             <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-700 flex justify-between items-center bg-slate-50 dark:bg-slate-700/50">
                 <h3 class="text-base font-bold text-slate-800 dark:text-slate-200">Upload Receipt</h3>
                 <button type="button" onclick="document.getElementById('uploadProofModal_<?= $debt->id ?>').classList.add('hidden')" class="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 text-xl leading-none">&times;</button>
